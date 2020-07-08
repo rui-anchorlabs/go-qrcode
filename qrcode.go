@@ -115,6 +115,7 @@ func WriteColorFile(content string, level RecoveryLevel, size int, background,
 
 	q.BackgroundColor = background
 	q.ForegroundColor = foreground
+	q.EyeColor = q.ForegroundColor
 
 	if err != nil {
 		return err
@@ -135,6 +136,7 @@ type QRCode struct {
 	// User settable drawing options.
 	ForegroundColor color.Color
 	BackgroundColor color.Color
+	EyeColor        color.Color
 
 	// Disable the QR Code border.
 	DisableBorder bool
@@ -191,6 +193,7 @@ func New(content string, level RecoveryLevel) (*QRCode, error) {
 
 		ForegroundColor: color.RGBA{16, 82, 101, 255},
 		BackgroundColor: color.White,
+		EyeColor:        color.RGBA{0xFE, 0x80, 0x2D, 255},
 
 		encoder: encoder,
 		data:    encoded,
@@ -248,6 +251,7 @@ func NewWithForcedVersion(content string, version int, level RecoveryLevel) (*QR
 
 		ForegroundColor: color.Black,
 		BackgroundColor: color.White,
+		EyeColor:        color.Black,
 
 		encoder: encoder,
 		data:    encoded,
@@ -305,15 +309,38 @@ func (q *QRCode) Image(size int) image.Image {
 	rect := image.Rectangle{Min: image.Point{0, 0}, Max: image.Point{size, size}}
 
 	// Saves a few bytes to have them in this order
-	p := color.Palette([]color.Color{q.BackgroundColor, q.ForegroundColor})
+	p := color.Palette([]color.Color{q.BackgroundColor, q.ForegroundColor, q.EyeColor})
 	img := image.NewPaletted(rect, p)
 	fgClr := uint8(img.Palette.Index(q.ForegroundColor))
+	eyeClr := uint8(img.Palette.Index(q.EyeColor))
 
 	// QR code bitmap.
 	bitmap := q.symbol.bitmap()
 
-	// Map each image pixel to the nearest QR code module.
 	modulesPerPixel := float64(realSize) / float64(size)
+
+	// Find out offset to Eye
+	// eye is 8 elements wide, calculate its real size in the context of our output image size
+	eyeDim := int(float64(8) * (float64(1) / modulesPerPixel))
+	offX := 0
+	offY := 0
+	for eY := 0; eY < size; eY++ {
+		for eX := 0; eX < size; eX++ {
+			eY2 := int(float64(eY) * modulesPerPixel)
+			eX2 := int(float64(eX) * modulesPerPixel)
+			if bitmap[eY2][eX2] {
+				offX = eX
+				offY = eY
+				break
+			}
+		}
+		if offX != 0 || offY != 0 {
+			break
+		}
+	}
+	//log.Printf("Found eye start at %d,%d (%f)\n", offX, offY, modulesPerPixel)
+
+	// Map each image pixel to the nearest QR code module.
 	for y := 0; y < size; y++ {
 		y2 := int(float64(y) * modulesPerPixel)
 		for x := 0; x < size; x++ {
@@ -322,8 +349,23 @@ func (q *QRCode) Image(size int) image.Image {
 			v := bitmap[y2][x2]
 
 			if v {
+				yPadding := offY + eyeDim
+				xPadding := offX + eyeDim
+				painted := false
+
 				pos := img.PixOffset(x, y)
-				img.Pix[pos] = fgClr
+				if y < yPadding || y > (size-yPadding) {
+					if x < xPadding || x > (size-xPadding) {
+						// eye is not in lower right
+						if !(x > (size-xPadding) && y > (size-yPadding)) {
+							img.Pix[pos] = eyeClr
+							painted = true
+						}
+					}
+				}
+				if !painted {
+					img.Pix[pos] = fgClr
+				}
 			}
 		}
 	}
