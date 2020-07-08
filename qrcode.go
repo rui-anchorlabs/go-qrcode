@@ -189,7 +189,7 @@ func New(content string, level RecoveryLevel) (*QRCode, error) {
 		Level:         level,
 		VersionNumber: chosenVersion.version,
 
-		ForegroundColor: color.Black,
+		ForegroundColor: color.RGBA{16, 82, 101, 255},
 		BackgroundColor: color.White,
 
 		encoder: encoder,
