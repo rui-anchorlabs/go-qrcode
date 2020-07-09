@@ -12,7 +12,7 @@ import (
 	"image/png"
 	"os"
 
-	qrcode "github.com/skip2/go-qrcode"
+	qrcode "github.com/rui-anchorlabs/go-qrcode"
 )
 
 func main() {
@@ -39,7 +39,7 @@ Usage:
 
   2. Save to file if "display" not available:
 
-       qrcode "homepage: https://github.com/skip2/go-qrcode" > out.png
+       qrcode "homepage: https://github.com/rui-anchorlabs/go-qrcode" > out.png
 
 `)
 	}
