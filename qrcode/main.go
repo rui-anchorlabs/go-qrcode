@@ -16,7 +16,6 @@ import (
 )
 
 func main() {
-	// content := flag.String("c", "", "content to encode")
 	outFile := flag.String("o", "", "out PNG file prefix, empty for stdout")
 	size := flag.Int("s", 256, "image size (pixel)")
 	textArt := flag.Bool("t", false, "print as text-art on stdout")
