@@ -8,7 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"image"
-	"image/color"
+	"image/draw"
 	"image/png"
 	"os"
 
@@ -83,9 +83,9 @@ Usage:
 
 	logo, _, err := image.Decode(file)
 	checkError(err)
-	overlayLogo(img, logo, code)
+	output := overlayLogo(img, logo)
 
-	err = png.Encode(&buf, img)
+	err = png.Encode(&buf, output)
 	checkError(err)
 
 	if *outFile == "" {
@@ -106,23 +106,10 @@ func checkError(err error) {
 	}
 }
 
-var GreyThreshold = 30
-var AlphaThreshold = 2000
-
 // overlayLogo blends logo to the center of the QR code.
-func overlayLogo(dst, src image.Image, qrcode *qrcode.QRCode) {
-	grey := uint32(^uint16(0)) * uint32(GreyThreshold) / 100
-	alphaOffset := uint32(AlphaThreshold)
-	offset := dst.Bounds().Max.X/2 - src.Bounds().Max.X/2
-	for x := 0; x < src.Bounds().Max.X; x++ {
-		for y := 0; y < src.Bounds().Max.Y; y++ {
-			if r, g, b, alpha := src.At(x, y).RGBA(); alpha > alphaOffset {
-				col := qrcode.ForegroundColor
-				if r > grey && g > grey && b > grey {
-					col = color.White
-				}
-				dst.(*image.Paletted).Set(x+offset, y+offset, col)
-			}
-		}
-	}
+func overlayLogo(src, logo image.Image) image.Image {
+	result := image.NewRGBA(src.Bounds())
+	draw.Draw(result, src.Bounds(), src, image.ZP, draw.Src)
+	draw.Draw(result, logo.Bounds(), logo, image.ZP, draw.Over)
+	return result
 }
